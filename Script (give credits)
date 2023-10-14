@@ -1,0 +1,51 @@
+using System;
+using UnityEngine;
+using PlayFab;
+using PlayFab.ClientModels;
+using Oculus.Platform;
+using Oculus.Platform.Models;
+
+public class PlayFabOculusLinking : MonoBehaviour
+{
+    private string playFabTitleId = "YOUR_PLAYFAB_TITLE_ID";
+    private string oculusAppId = "YOUR_OCULUS_APP_ID";
+
+    private string oculusUserId;
+
+    private void Start()
+    {
+        PlayFabSettings.TitleId = playFabTitleId;
+
+        Oculus.Platform.Core.AsyncInitialize(oculusAppId);
+        Oculus.Platform.Request.RunCallbacks();
+        Oculus.Platform.Users.GetLoggedInUser().OnComplete(GetOculusUserIDCallback);
+    }
+
+    private void GetOculusUserIDCallback(Message<User> message)
+    {
+        if (message.IsError)
+        {
+            Debug.LogError("Oculus Platform authentication failed: " + message.GetError().Message);
+            return;
+        }
+
+        oculusUserId = message.Data.ID.ToString();
+
+        // Authenticate with PlayFab (using PlayFab client API)
+        PlayFabClientAPI.LoginWithCustomID(new LoginWithCustomIDRequest
+        {
+            CustomId = oculusUserId, // Using Oculus User ID as the custom ID
+            CreateAccount = false // Make it true if the script should create playfab accounts
+        }, OnPlayFabLogin, OnPlayFabError);
+    }
+
+    private void OnPlayFabLogin(LoginResult result)
+    {
+        Debug.Log("Successfully logged in to PlayFab.");
+    }
+
+    private void OnPlayFabError(PlayFabError error)
+    {
+        Debug.LogError("PlayFab login failed: " + error.ErrorMessage);
+    }
+}
